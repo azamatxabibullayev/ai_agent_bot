@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from itertools import cycle
 from typing import Optional, List, Dict, Any
 from google import genai
 from google.genai import types
@@ -8,38 +9,38 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-client = genai.Client(api_key=GEMINI_API_KEY)
+api_keys_str = os.getenv("GEMINI_API_KEYS", "")
+if not api_keys_str:
+    api_keys_str = os.getenv("GEMINI_API_KEY", "")
+
+API_KEYS_POOL = [key.strip() for key in api_keys_str.split(",") if key.strip()]
+
+if not API_KEYS_POOL:
+    raise ValueError("XATOLIK: .env faylida GEMINI_API_KEYS yoki GEMINI_API_KEY topilmadi!")
+
+keys_iterator = cycle(API_KEYS_POOL)
+
+
+def get_next_client() -> genai.Client:
+    current_key = next(keys_iterator)
+    print(f"🤖 AI so'rovi uchun kalit almashtirildi: ...{current_key[-8:]}")
+    return genai.Client(api_key=current_key)
 
 
 def build_system_prompt(products_info: str) -> str:
-    return f"""Sen "TechShop" do'konining aqlli savdo assistentisan. Sening vazifang - mijozlardan telefon va boshqa texnika buyurtmalarini qabul qilish.
+    return f"""Sen "TechShop" telefon do'konining professional sotuvchisisan. Maqsading chalg'imasdan mahsulot sotish va buyurtma olish.
 
-## DO'KONDAGI MAVJUD MAHSULOTLAR:
+## OMBORDAGI SMARTFONLAR:
 {products_info}
 
-## SENING VAZIFANG:
-1. Mijozlarni do'sona munosabat bilan kutib ol
-2. Ular nima istayotganini tushun
-3. Ombordagi mahsulotlar asosida eng mos variantni taklif qil
-4. Agar so'ragan mahsulot bo'lsa - taklif qil, bo'lmasa - o'xshash variantlarni ko'rsat
-5. Buyurtmani rasmiylashtirish uchun quyidagilarni yig':
-   - Ismi, familiyasi
-   - Telefon raqami
-   - Yetkazib berish manzili (yoki o'zi olib ketishi)
-   - Tanlagan mahsulot va miqdori
+## QOIDALAR:
+1. FORMATLASH: Hech qanday yulduzchalar (*), panjaralar (#) yoki minus (-) belgilarini ishlatma! Oddiy va abzasli matn bilan yoz.
+2. TAKRORIY SALOMLASHISH: Suhbat davomida qayta-qayta salom berma. Faqat boshida bir marta salomlash.
+3. TELEFON MAVZUSI: Solishtirish savollariga juda qisqa (2 ta gap) javob ber va darhol gapni ombordagi modellarga bur. 
+4. BEGONA MAVZU: Telefonlarga aloqasi yo'q narsalarni so'rasa, faqat telefonlar bo'yicha yordam bera olishingni eslat.
 
-## MUHIM QOIDALAR:
-- FAQAT omborda bor mahsulotlarni taklif qil
-- Narxlarni aniq ayt (so'm hisobida)
-- Mijoz ma'lumotlarini to'liq yig'gandan keyin buyurtmani tasdiqlashni so'ra
-- Doim o'zbek tilida gaplash
-- Samimiy va professional bo'l
-- Agar mijoz boshqa tilda yozsa, shu tilda javob ber
-
-## BUYURTMA TASDIQLASH:
-Barcha ma'lumotlar yig'ilganda, javobni AYNAN quyidagi JSON formatida yakunla:
-
+## BUYURTMA JSON:
+Barcha ma'lumotlar (Ism, Tel, Manzil) yig'ilganda, javobni AYNAN quyidagi formatda yakunla:
 ===ORDER_DATA===
 {{
   "ready": true,
@@ -48,13 +49,11 @@ Barcha ma'lumotlar yig'ilganda, javobni AYNAN quyidagi JSON formatida yakunla:
   "quantity": 1,
   "customer_name": "Ism Familiya",
   "customer_phone": "+998901234567",
-  "customer_address": "manzil yoki 'O'zi olib ketadi'",
-  "summary": "Buyurtma xulosasi"
+  "customer_address": "manzil",
+  "summary": "Xulosa"
 }}
 ===END_ORDER===
-
-Agar ma'lumotlar to'liq bo'lmasa, "ready": false qo'y va yetishmayotgan ma'lumotni so'ra.
-Agar buyurtma yo'q bo'lsa (faqat savol-javob), JSON blokni umuman qo'shma.
+Jarayon to'liq bo'lmasa "ready": false qo'y. Oddiy gaplashganda JSON qo'shma.
 """
 
 
@@ -86,30 +85,42 @@ class AIAgent:
             conversation_history: List[Dict[str, str]],
             products_info: str,
     ) -> tuple[str, Optional[Dict[str, Any]]]:
+
         system_prompt = build_system_prompt(products_info)
-
         contents = []
-        for msg in conversation_history[:-1]:
-            role = "user" if msg["role"] == "user" else "model"
-            contents.append(
-                types.Content(
-                    role=role,
-                    parts=[types.Part.from_text(text=msg["message"])]
-                )
-            )
 
-        full_message = f"{system_prompt}\n\n---\nMijoz xabari: {user_message}"
+        # ⚡ TOKEN PARHEZI: Chat tarixini faqat oxirgi 4 ta xabar bilan cheklaymiz
+        limited_history = conversation_history[-4:] if conversation_history else []
+
+        if limited_history:
+            for msg in limited_history[:-1]:
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append(
+                    types.Content(
+                        role=role,
+                        parts=[types.Part.from_text(text=msg["message"])]
+                    )
+                )
+
         contents.append(
             types.Content(
                 role="user",
-                parts=[types.Part.from_text(text=full_message)]
+                parts=[types.Part.from_text(text=user_message)]
             )
         )
 
         try:
-            response = await client.aio.models.generate_content(
+            # Har safar yangi xabar kelganda navbatdagi Client (kalit) yuklanadi
+            current_client = get_next_client()
+
+            response = await current_client.aio.models.generate_content(
                 model=self.model_name,
-                contents=contents
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=300,
+                    temperature=0.3
+                )
             )
             response_text = response.text
 
@@ -119,12 +130,18 @@ class AIAgent:
             return clean_text, order_data
 
         except Exception as e:
-            error_msg = f"AI xizmatida xatolik yuz berdi. Iltimos, qayta urinib ko'ring. ({str(e)[:50]})"
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                error_msg = "Hozirda bandman. Iltimos, 30 soniyadan keyin qayta yozing."
+            else:
+                error_msg = "Tizimda uzilish bo'ldi. Birozdan so'ng qayta yozib ko'ring."
+
             return error_msg, None
 
     async def get_simple_response(self, prompt: str) -> str:
         try:
-            response = await client.aio.models.generate_content(
+            current_client = get_next_client()
+            response = await current_client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt
             )
@@ -135,14 +152,13 @@ class AIAgent:
 
 def format_products_for_ai(products: list) -> str:
     if not products:
-        return "Hozirda omborda mahsulot yo'q."
+        return "Omborda mahsulot yo'q."
+
+    limited_products = products[:5]
 
     lines = []
-    for p in products:
-        line = (
-            f"- {p.model} | Rang: {p.color or 'ko-rsatilmagan'} | "
-            f"Narx: {p.price:,.0f} so'm | Soni: {p.quantity} ta | ID: {p.id}"
-        )
+    for p in limited_products:
+        line = f"- {p.model} | {p.color or ''} | Narx: {p.price:,.0f} so'm | ID: {p.id}"
         lines.append(line)
 
     return "\n".join(lines)
