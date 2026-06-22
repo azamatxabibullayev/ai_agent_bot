@@ -1,0 +1,7 @@
+aiogram
+sqlalchemy
+asyncpg
+alembic
+python-dotenv
+google-generativeai
+aiohttp
