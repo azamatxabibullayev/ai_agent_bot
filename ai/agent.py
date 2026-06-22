@@ -89,7 +89,6 @@ class AIAgent:
         system_prompt = build_system_prompt(products_info)
         contents = []
 
-        # ⚡ TOKEN PARHEZI: Chat tarixini faqat oxirgi 4 ta xabar bilan cheklaymiz
         limited_history = conversation_history[-4:] if conversation_history else []
 
         if limited_history:
@@ -110,7 +109,6 @@ class AIAgent:
         )
 
         try:
-            # Har safar yangi xabar kelganda navbatdagi Client (kalit) yuklanadi
             current_client = get_next_client()
 
             response = await current_client.aio.models.generate_content(
