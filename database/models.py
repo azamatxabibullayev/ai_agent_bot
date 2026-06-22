@@ -63,7 +63,6 @@ class User(Base):
 
 
 class Order(Base):
-    """Buyurtmalar jadvali"""
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

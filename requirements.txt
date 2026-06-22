@@ -3,5 +3,5 @@ sqlalchemy
 asyncpg
 alembic
 python-dotenv
-google-generativeai
+google-genai
 aiohttp

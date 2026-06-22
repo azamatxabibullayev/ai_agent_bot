@@ -86,9 +86,11 @@ async def all_orders(message: Message):
     text = "📋 <b>OXIRGI 20 TA BUYURTMA:</b>\n\n"
     for order in orders:
         status_emoji = {"pending": "⏳", "confirmed": "✅", "cancelled": "❌"}.get(order.status, "❓")
+
+        customer = order.customer_name or "Noma'lum"
         text += (
             f"{status_emoji} #{order.id} — {order.product_name} "
-            f"({order.quantity}ta) — {order.customer_name or "Noma\'lum"}\n"
+            f"({order.quantity}ta) — {customer}\n"
         )
 
     await message.answer(text, parse_mode="HTML")
