@@ -17,16 +17,16 @@ Ushbu Telegram bot "TechShop" smartfonlar do'koni uchun sun'iy intellekt asosida
 ## 🖼️ Botdan Ko'rinish (Skrinshotlar)
 
 ### Foydalanuvchi (User) Interfeysi
-> *Bu yerga foydalanuvchi bot bilan muloqot qilayotgani aks etgan skrinshotni joylashtiring.*
+<img width="562" height="457" alt="image" src="https://github.com/user-attachments/assets/8b73058f-1033-489c-91ea-1de94735df67" />
+<img width="541" height="363" alt="image" src="https://github.com/user-attachments/assets/68fa527b-4b93-436d-a4ac-c3c92251770b" />
+<img width="571" height="297" alt="image" src="https://github.com/user-attachments/assets/36a13d08-f9cd-4b4c-ac4b-53f79d9578f7" />
 
-*(Skrinshotingizni shu yerga qo'ying)*
 
 ---
 
 ### Admin Panel Interfeysi
-> *Bu yerga do'kon admin paneli yoki buyurtmalar ro'yxati aks etgan skrinshotni joylashtiring.*
+<img width="527" height="692" alt="image" src="https://github.com/user-attachments/assets/944fdc8f-fd0f-41c5-9235-9775a4591c82" />
 
-*(Skrinshotingizni shu yerga qo'ying)*
 
 ---
 
