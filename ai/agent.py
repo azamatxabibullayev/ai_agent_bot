@@ -2,14 +2,12 @@ import os
 import json
 import re
 from typing import Optional, List, Dict, Any
-# 🛠️ Yangi SDK importlari
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# 🛠️ Yangi Client yaratish (Chaqiruvlar client orqali bo'ladi)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -80,8 +78,7 @@ def clean_response_text(response_text: str) -> str:
 
 class AIAgent:
     def __init__(self):
-        # Yangi SDKda model nomi string ko'rinishida beriladi
-        self.model_name = "gemini-1.5-flash"
+        self.model_name = "gemini-2.5-flash"
 
     async def get_response(
             self,
@@ -91,9 +88,8 @@ class AIAgent:
     ) -> tuple[str, Optional[Dict[str, Any]]]:
         system_prompt = build_system_prompt(products_info)
 
-        # 🛠️ Yangi SDK talab qiladigan tarix (Contents format)
         contents = []
-        for msg in conversation_history[:-1]:  # Oxirgi xabardan tashqari hammasi tarixga
+        for msg in conversation_history[:-1]:
             role = "user" if msg["role"] == "user" else "model"
             contents.append(
                 types.Content(
@@ -102,7 +98,6 @@ class AIAgent:
                 )
             )
 
-        # 🛠️ Tizimli prompt va joriy foydalanuvchi xabarini birlashtirib oxiriga qo'shamiz
         full_message = f"{system_prompt}\n\n---\nMijoz xabari: {user_message}"
         contents.append(
             types.Content(
@@ -112,7 +107,6 @@ class AIAgent:
         )
 
         try:
-            # 🛠️ Yangi kutubxonaning async so'rov chaqiruvi (client.aio)
             response = await client.aio.models.generate_content(
                 model=self.model_name,
                 contents=contents
@@ -130,7 +124,6 @@ class AIAgent:
 
     async def get_simple_response(self, prompt: str) -> str:
         try:
-            # 🛠️ Oddiy async matn generatsiyasi
             response = await client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt
